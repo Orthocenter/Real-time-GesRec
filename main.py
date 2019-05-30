@@ -110,9 +110,15 @@ if __name__ == '__main__':
             SpatialElasticDisplacement(),
             ToTensor(opt.norm_value), norm_method
         ])
+        assert opt.temporal_crop in ['range', 'random']
+        if opt.temporal_crop == 'range':
+            temporal_crop_method = TemporalRangeCrop(opt.range_begin, opt.range_length, opt.sample_duration, opt.range_offset)
+        elif opt.temporal_crop == 'random':
+            temporal_crop_method = TemporalRandomCrop(opt.sample_duration)
+
         temporal_transform = Compose([
-            TemporalRandomCrop(opt.sample_duration)
-            ])
+            temporal_crop_method
+        ])
         target_transform = ClassLabel()
         training_data = get_training_set(opt, spatial_transform,
                                          temporal_transform, target_transform)

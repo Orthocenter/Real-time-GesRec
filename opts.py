@@ -273,6 +273,30 @@ def parse_opts_offline(args=None):
         action='store_true', 
         help='If true, loss is weighted')
     parser.set_defaults(weighted=False)
+    parser.add_argument(
+        '--range_begin',
+        default=9,
+        type=int,
+        help='Beginning position of TemporalRangeCrop'
+    )
+    parser.add_argument(
+        '--range_length',
+        default=8,
+        type=int,
+        help='Range length of TemporalRangeCrop'
+    )
+    parser.add_argument(
+        '--range_offset',
+        default=0,
+        type=int,
+        help='Random offset of range beginning position of TemporalRangeCrop'
+    )
+    parser.add_argument(
+        '--temporal_crop',
+        default='random',
+        type=str,
+        help='Temporal cropping method in training/testing. (random | range)'
+    )
 
     args = parser.parse_args(args)
 

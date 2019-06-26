@@ -4,6 +4,8 @@ import pdb
 
 from models import resnet, resnext, resnetl, c3d
 
+from collections import OrderedDict
+
 
 def generate_model(opt):
     assert opt.model in [
@@ -110,11 +112,16 @@ def generate_model(opt):
             pretrain = torch.load(opt.pretrain_path)
             assert opt.arch == pretrain['arch']
 
-            model.load_state_dict(pretrain['state_dict'])
+            state_dict = pretrain['state_dict']
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k[7:]  # remove 'module.' of dataparallel
+                new_state_dict[name] = v
+            model.load_state_dict(new_state_dict)
 
         if opt.modality == 'RGB' and opt.model != 'c3d':
             print("[INFO]: RGB model is used for init model")
-            model = _modify_first_conv_layer(model,3,3)
+            # model = _modify_first_conv_layer(model,3,3)
         elif opt.modality == 'Depth':
             print("[INFO]: Converting the pretrained model to Depth init model")
             model = _construct_depth_model(model)

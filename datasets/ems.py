@@ -11,11 +11,12 @@ from numpy.random import randint
 import numpy as np
 import random
 import glob
+import cv2
 
 from utils import load_value_file
 
 
-def pil_loader(path, modality):
+def pil_loader(path, modality, threshold=150):
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
     with open(path, 'rb') as f:
         #print(path)
@@ -25,7 +26,16 @@ def pil_loader(path, modality):
             elif modality == 'Flow':
                 return img.convert('L')
             elif modality == 'Depth':
-                return img.convert('L')
+                img = img.convert('L')
+                img = np.array(img)
+                mask = img.copy()
+                mask[mask > threshold] = 0
+                mask[mask > 0] = 1
+                kernel = np.ones((5, 5), np.uint8)
+                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+                img *= mask
+                img = Image.fromarray(img)
+                return img
 
 
 def accimage_loader(path, modality):

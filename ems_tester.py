@@ -31,7 +31,7 @@ import random
 import warnings
 
 class EMSTester():
-    def __init__(self, root_path, video_path, annotation_path, result_path, model_path, modality='RGB', sample_duration=32, sample_size=112):
+    def __init__(self, root_path, video_path, annotation_path, result_path, model_path, modality='RGB', sample_duration=32, sample_size=112, padding_size=0):
         opt = parse_opts_offline(
             ['--root_path', root_path,
             '--video_path', video_path, 
@@ -83,6 +83,7 @@ class EMSTester():
         self.opt = opt
         self.model = model
         self.parameters = parameters
+        self.padding_size = padding_size
 
     def calculate_accuracy(self, outputs, targets, topk=(1,)):
         maxk = max(topk)
@@ -130,7 +131,8 @@ class EMSTester():
             ToTensor(opt.norm_value), norm_method
         ])
 
-        temporal_transform = TemporalCenterCrop(opt.sample_duration)
+        # temporal_transform = TemporalCenterCrop(opt.sample_duration)
+        temporal_transform = TemporalNoPaddingCrop(opt.sample_duration, self.padding_size)
 
 
         target_transform = ClassLabel()

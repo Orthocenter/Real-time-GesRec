@@ -103,6 +103,30 @@ class TemporalCenterCrop(object):
 
 
 
+class TemporalNoPaddingCrop(object):
+    """
+    To remove padding at the end of a gesture.
+    """
+    def __init__(self, model_size, padding_size):
+        # model_size: the size the model wants
+        # gesture_size: the size the gesture is supposed to be
+        self.model_size = model_size
+        self.padding_size = padding_size
+        self.gesture_size = model_size - padding_size
+    
+    def __call__(self, frame_indices):
+        end_index = min(self.model_size, self.gesture_size)
+        out = frame_indices[0:end_index]
+
+        for i in range(self.model_size - self.gesture_size):
+            out.append(out[-1])
+        
+        for index in out:
+            if len(out) >= self.model_size:
+                break
+            out.append(index)
+
+        return out
 
 
 

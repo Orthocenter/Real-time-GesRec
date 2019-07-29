@@ -115,6 +115,7 @@ class ResNeXt(nn.Module):
         self.avgpool = nn.AvgPool3d(
             (last_duration, last_size, last_size), stride=1)
         self.fc = nn.Linear(cardinality * 32 * block.expansion, num_classes)
+        self.fc2 = nn.Linear(cardinality * 32 * block.expansion, 1)
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
@@ -169,9 +170,10 @@ class ResNeXt(nn.Module):
         x = self.avgpool(x)
 
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        prob = self.fc(x)
+        shift = self.fc2(x)
 
-        return x
+        return prob, shift
 
 
 def get_fine_tuning_parameters(model, ft_begin_index):

@@ -85,9 +85,14 @@ if __name__ == '__main__':
         weight = None
 
 
-    criterion = nn.CrossEntropyLoss()
+    criterion_prob = nn.CrossEntropyLoss()
     if not opt.no_cuda:
-        criterion = criterion.cuda()
+        criterion_prob = criterion_prob.cuda()
+    criterion_shift = nn.MSELoss()
+    if not opt.no_cuda:
+        criterion_shift = criterion_shift.cuda()
+    
+    criterion = lambda x, y: criterion_prob(x[0], y[0]) + criterion_shift(x[1], y[1])
 
     if opt.no_mean_norm and not opt.std_norm:
         norm_method = Normalize([0, 0, 0], [1, 1, 1])

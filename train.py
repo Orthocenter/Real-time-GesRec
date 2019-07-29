@@ -32,8 +32,9 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
         inputs = Variable(inputs)
         targets = Variable(targets)
         #pdb.set_trace()
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
+        model_outputs = model(inputs)
+        outputs, shift = model_outputs # class probabilities and predicted shift
+        loss = criterion(model_outputs, targets)
         acc = calculate_accuracy(outputs, targets)
         precision = calculate_precision(outputs, targets) #
         recall = calculate_recall(outputs,targets)

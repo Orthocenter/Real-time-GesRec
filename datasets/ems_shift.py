@@ -273,6 +273,7 @@ class EMS_shift(data.Dataset):
         keys = list(self.length_configuration.keys())
         for k in keys:
             self.length_configuration[self.find_class_id(k)] = self.length_configuration[k]
+        print(self.length_configuration)
 
     def __getitem__(self, index):
         """

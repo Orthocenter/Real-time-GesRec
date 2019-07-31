@@ -42,7 +42,7 @@ def train_epoch(epoch, data_loader, model, criterion_prob, criterion_shift, opti
         # print(shift, target_shift)
         loss_prob = criterion_prob(prob, target_prob)
         loss_shift = criterion_shift(shift, target_shift)
-        loss = loss_prob + loss_shift * 0
+        loss = loss_prob + loss_shift * 1
 
         acc = calculate_accuracy(prob, target_prob)
         precision = calculate_precision(prob, target_prob) #

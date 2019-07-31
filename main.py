@@ -151,7 +151,7 @@ if __name__ == '__main__':
             target_transform,
             modality=opt.modality,
             sample_duration=opt.sample_duration,
-            random_offset=1)
+            random_offset=opt.random_offset)
 
         train_loader = torch.utils.data.DataLoader(
             train_data,

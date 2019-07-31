@@ -90,7 +90,8 @@ def parse_opts_offline(args=None):
         'Initial learning rate (divided by 10 while training by lr scheduler)')
     parser.add_argument(
         '--lr_steps', 
-        default=[10, 25, 50, 80, 100], 
+        # default=[10, 25, 50, 80, 100], 
+        default=[25, 50, 80, 100], 
         type=float, nargs="+", 
         metavar='LRSteps', 
         help='epochs to decay learning rate by 10')
@@ -143,6 +144,11 @@ def parse_opts_offline(args=None):
         default=128, 
         type=int, 
         help='Batch Size')
+    parser.add_argument(
+        '--random_offset', 
+        default=0, 
+        type=int, 
+        help='Random offset for vaired-length gestures')
     parser.add_argument(
         '--n_epochs',
         default=200,

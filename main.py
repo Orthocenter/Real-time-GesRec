@@ -161,10 +161,10 @@ if __name__ == '__main__':
             pin_memory=True)
         train_logger = Logger(
             os.path.join(opt.result_path, 'train.log'),
-            ['epoch', 'loss', 'loss_prob', 'loss_shift', 'acc', 'precision','recall','lr'])
+            ['epoch', 'loss', 'loss_prob', 'loss_shift', 'acc', 'precision','recall','lr'], continued=(opt.resume_path!=None))
         train_batch_logger = Logger(
             os.path.join(opt.result_path, 'train_batch.log'),
-            ['epoch', 'batch', 'iter', 'loss', 'loss_prob', 'loss_shift', 'acc', 'precision', 'recall', 'lr'])
+            ['epoch', 'batch', 'iter', 'loss', 'loss_prob', 'loss_shift', 'acc', 'precision', 'recall', 'lr'], continued=(opt.resume_path!=None))
 
         if opt.nesterov:
             dampening = 0

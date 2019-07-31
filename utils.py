@@ -25,11 +25,16 @@ class AverageMeter(object):
 
 class Logger(object):
 
-    def __init__(self, path, header):
-        self.log_file = open(path, 'w')
+    def __init__(self, path, header, continued=False):
+        if continued:
+            self.log_file = open(path, 'a')
+        else:
+            self.log_file = open(path, 'w')
         self.logger = csv.writer(self.log_file, delimiter='\t')
 
-        self.logger.writerow(header)
+        if continued:
+            self.logger.writerow(header)
+        
         self.header = header
 
     def __del(self):

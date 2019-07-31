@@ -91,7 +91,7 @@ def parse_opts_offline(args=None):
     parser.add_argument(
         '--lr_steps', 
         # default=[10, 25, 50, 80, 100], 
-        default=[25, 50, 80, 100], 
+        default=[50, 80, 100], 
         type=float, nargs="+", 
         metavar='LRSteps', 
         help='epochs to decay learning rate by 10')

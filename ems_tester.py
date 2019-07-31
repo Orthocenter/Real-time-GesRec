@@ -126,6 +126,7 @@ class EMSTester():
 
         # original
         spatial_transform = Compose([
+            ZoomIn((320*1.2, 240*1.2), (1.6, 1.)),
             Scale(opt.sample_size),
             CenterCrop(opt.sample_size),
             ToTensor(opt.norm_value), norm_method

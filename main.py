@@ -14,6 +14,7 @@ from spatial_transforms import *
 from temporal_transforms import *
 from target_transforms import ClassLabel, VideoID
 from target_transforms import Compose as TargetCompose
+from datasets.ems_shift import EMS_shift
 from dataset import get_training_set, get_validation_set, get_test_set
 from utils import Logger
 from train import train_epoch
@@ -119,20 +120,50 @@ if __name__ == '__main__':
             TemporalRandomCrop(opt.sample_duration)
             ])
         target_transform = ClassLabel()
-        training_data = get_training_set(opt, spatial_transform,
-                                         temporal_transform, target_transform)
+        # training_data = get_training_set(opt, spatial_transform,
+        #                                  temporal_transform, target_transform)
+        
+        uneven_gestures_paths = [
+            'subject01_setting3_01',
+            'subject01_setting3_04',
+        ]
+
+        data_root = '/mnt/data/yxchen/gesture-datasets/ems/data'
+        uneven_gestures_paths = [os.path.join(data_root, p) for p in uneven_gestures_paths]
+
+        length_configuration = {
+            'quick_pronation': 10,
+            'quick_supination': 7,
+            'quick_wrist_left': 8,
+            'quick_wrist_right': 9,
+        }
+
+        train_data = EMS_shift(
+            opt.video_path,
+            opt.annotation_path,
+            'train',
+            uneven_gestures_paths,
+            length_configuration,
+            opt.n_val_samples,
+            spatial_transform,
+            temporal_transform,
+            target_transform,
+            modality=opt.modality,
+            sample_duration=opt.sample_duration,
+            random_offset=1)
+
         train_loader = torch.utils.data.DataLoader(
-            training_data,
+            train_data,
             batch_size=opt.batch_size,
             shuffle=True,
             num_workers=opt.n_threads,
             pin_memory=True)
         train_logger = Logger(
             os.path.join(opt.result_path, 'train.log'),
-            ['epoch', 'loss', 'acc', 'precision','recall','lr'])
+            ['epoch', 'loss', 'loss_prob', 'loss_shift', 'acc', 'precision','recall','lr'])
         train_batch_logger = Logger(
             os.path.join(opt.result_path, 'train_batch.log'),
-            ['epoch', 'batch', 'iter', 'loss', 'acc', 'precision', 'recall', 'lr'])
+            ['epoch', 'batch', 'iter', 'loss', 'loss_prob', 'loss_shift', 'acc', 'precision', 'recall', 'lr'])
 
         if opt.nesterov:
             dampening = 0
@@ -183,7 +214,7 @@ if __name__ == '__main__':
     for i in range(opt.begin_epoch, opt.n_epochs + 1):
         if not opt.no_train:
             adjust_learning_rate(optimizer, i, opt.lr_steps)
-            train_epoch(i, train_loader, model, criterion, optimizer, opt,
+            train_epoch(i, train_loader, model, criterion_prob, criterion_shift, optimizer, opt,
                         train_logger, train_batch_logger)
         if not opt.no_val:
             validation_loss, prec1 = val_epoch(i, val_loader, model, criterion, opt,

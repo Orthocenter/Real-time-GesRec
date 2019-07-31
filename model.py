@@ -67,7 +67,7 @@ def generate_model(opt):
             pretrain = torch.load(opt.pretrain_path)
             assert opt.arch == pretrain['arch']
 
-            model.load_state_dict(pretrain['state_dict'])
+            model.load_state_dict(pretrain['state_dict'], strict=False)
 
         if opt.modality == 'RGB' and opt.model != 'c3d':
             print("[INFO]: RGB model is used for init model")

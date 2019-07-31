@@ -8,7 +8,7 @@ import pdb
 from utils import AverageMeter, calculate_accuracy, calculate_precision, calculate_recall
 
 
-def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
+def train_epoch(epoch, data_loader, model, criterion_prob, criterion_shift, optimizer, opt,
                 epoch_logger, batch_logger):
     print('train at epoch {}'.format(epoch))
 
@@ -17,6 +17,8 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
+    losses_prob = AverageMeter()
+    losses_shift = AverageMeter()
     accuracies = AverageMeter()
     precisions = AverageMeter() #
     recalls = AverageMeter()
@@ -28,22 +30,30 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
 
         if not opt.no_cuda:
             # targets = targets.cuda(async=True)
-            targets = targets.cuda(non_blocking=True)
+            target_prob = targets[0].cuda(non_blocking=True)
+            target_shift = targets[1].cuda(non_blocking=True)
         inputs = Variable(inputs)
-        targets = Variable(targets)
+        target_prob = Variable(target_prob)
+        target_shift = Variable(target_shift)
         #pdb.set_trace()
         model_outputs = model(inputs)
-        outputs, shift = model_outputs # class probabilities and predicted shift
-        loss = criterion(model_outputs, targets)
-        acc = calculate_accuracy(outputs, targets)
-        precision = calculate_precision(outputs, targets) #
-        recall = calculate_recall(outputs,targets)
+        prob, shift = model_outputs  # class probabilities and predicted shift
+        # print(prob, target_prob)
+        # print(shift, target_shift)
+        loss_prob = criterion_prob(prob, target_prob)
+        loss_shift = criterion_shift(shift, target_shift)
+        loss = loss_prob + loss_shift * 0
+
+        acc = calculate_accuracy(prob, target_prob)
+        precision = calculate_precision(prob, target_prob) #
+        recall = calculate_recall(prob,target_prob)
 
         losses.update(loss.item(), inputs.size(0))
+        losses_prob.update(loss_prob.item(), inputs.size(0))
+        losses_shift.update(loss_shift.item(), inputs.size(0))
         accuracies.update(acc, inputs.size(0))
         precisions.update(precision, inputs.size(0))
         recalls.update(recall,inputs.size(0))
-
 
         optimizer.zero_grad()
         loss.backward()
@@ -57,6 +67,8 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
             'batch': i + 1,
             'iter': (epoch - 1) * len(data_loader) + (i + 1),
             'loss': losses.val,
+            'loss_prob': losses_prob.val,
+            'loss_shift': losses_shift.val,
             'acc': accuracies.val,
             'precision':precisions.val,
             'recall':recalls.val,
@@ -67,6 +79,8 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f}) | '
                   'Data {data_time.val:.3f} ({data_time.avg:.3f}) | '
                   'Loss {loss.val:.4f} ({loss.avg:.4f}) | '
+                  'Loss_prob {loss_prob.val:.4f} ({loss_prob.avg:.4f}) | '
+                  'Loss_shift {loss_shift.val:.4f} ({loss_shift.avg:.4f}) | '
                   'Acc {acc.val:.3f} ({acc.avg:.3f}) | '
                   'Precision {precision.val:.3f}({precision.avg:.3f}) | '
                   'Recall {recall.val:.3f}({recall.avg:.3f})'.format(
@@ -76,6 +90,8 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
                       batch_time=batch_time,
                       data_time=data_time,
                       loss=losses,
+                      loss_prob=losses_prob,
+                      loss_shift=losses_shift,
                       lr=optimizer.param_groups[0]['lr'],
                       acc=accuracies,
                       precision=precisions,
@@ -84,6 +100,8 @@ def train_epoch(epoch, data_loader, model, criterion, optimizer, opt,
     epoch_logger.log({
         'epoch': epoch,
         'loss': losses.avg,
+        'loss_prob': losses_prob.val,
+        'loss_shift': losses_shift.val,
         'acc': accuracies.avg,
         'precision':precisions.avg,
         'recall':recalls.avg,

@@ -225,7 +225,9 @@ class EMS_shift(data.Dataset):
         self.init_length_conf()
         self.init_data_paths()
         self.load_annotations()
-        self.random_offsets = [0] + [-i for i in range(1,self.random_offset+1)] + [i for i in range(1,self.random_offset+1)]
+        # self.random_offsets = [0] + [-i for i in range(1,self.random_offset+1)] + [i for i in range(1,self.random_offset+1)]
+        ## temporarily set to [-1] for 15.34.7
+        self.random_offsets = [-1]
     
     def find_class_id(self, ges):
         for name, i in self.class_to_idx.items():
@@ -297,7 +299,7 @@ class EMS_shift(data.Dataset):
         end = min(len(frame_indices) - 1, start + 10)
 
         frame_indices = [frame_indices[i] for i in range(start, end)]
-        # print('start', start, 'end', end, 'frame_indices', frame_indices, 'offset', random_offset, self.annots[dataset_id][gesture_id])
+        # print('start', start, 'end', end, 'frame_indices', frame_indices, 'offset', random_offset, 'annot', self.annots[dataset_id][gesture_id])
 
         if self.temporal_transform is not None:
             frame_indices = self.temporal_transform(frame_indices)

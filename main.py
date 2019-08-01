@@ -127,6 +127,9 @@ if __name__ == '__main__':
         uneven_gestures_paths = [
             'subject01_setting3_01',
             'subject01_setting3_04',
+            'subject01_setting3_05',
+            'subject01_setting3_06',
+            'subject01_setting3_07',
         ]
 
         data_root = '/mnt/data/yxchen/gesture-datasets/ems/data'

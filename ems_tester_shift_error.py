@@ -4,7 +4,7 @@ from train import train_epoch
 from utils import AverageMeter, calculate_precision, calculate_recall
 from utils import Logger
 from dataset import get_training_set, get_validation_set, get_test_set, get_online_data
-from datasets.ems_cumulative import EMS_cumulative
+from datasets.ems_shift_test import EMS_shift_test
 from target_transforms import Compose as TargetCompose
 from target_transforms import ClassLabel, VideoID
 from temporal_transforms import *
@@ -99,7 +99,7 @@ class EMSTester():
 
         return ret
 
-    def test(self, annotation_path='', video_path='', uneven_gestures_path='', length_configuration={}):
+    def test(self, annotation_path='', video_path='', uneven_gestures_paths=[], length_configuration={}, offset=0):
         opt = self.opt
         
         if annotation_path != '':
@@ -136,20 +136,26 @@ class EMSTester():
         # temporal_transform = TemporalCenterCrop(opt.sample_duration)
         temporal_transform = TemporalNoPaddingCrop(opt.sample_duration, self.padding_size)
 
+        # uneven_gestures_paths = [
+        #     'subject01_setting3_08',
+        #     'subject01_setting3_09',
+        #     'subject01_setting3_10',
+        # ]
 
         target_transform = ClassLabel()
-        test_data = EMS_cumulative(
+        test_data = EMS_shift_test(
             opt.video_path,
             opt.annotation_path,
             'test',
-            uneven_gestures_path,
+            uneven_gestures_paths,
             length_configuration,
             opt.n_val_samples,
             spatial_transform,
             temporal_transform,
             target_transform,
             modality=opt.modality,
-            sample_duration=opt.sample_duration)
+            sample_duration=opt.sample_duration,
+            offset=offset)
 
         test_loader = torch.utils.data.DataLoader(
             test_data,
@@ -190,31 +196,31 @@ class EMSTester():
             #     for k in range(10):
             #         axs[k].imshow(data[j,0,k])
             #     plt.show()
-
             if not opt.no_cuda:
-                targets = targets.cuda(non_blocking=True)
+                # targets = targets.cuda(async=True)
+                target_prob = targets[0].cuda(non_blocking=True)
+                target_shift = targets[1].cuda(non_blocking=True)
+
             #inputs = Variable(torch.squeeze(inputs), volatile=True)
             with torch.no_grad():
                 inputs = Variable(inputs)
-                targets = Variable(targets)
+                target_prob = Variable(target_prob)
                 outputs_prob, outputs_shift = self.model(inputs)
                 if not opt.no_softmax_in_test:
                     outputs_prob = F.softmax(outputs_prob, dim=1)
                 recorder.append(outputs_prob.data.cpu().numpy().copy())
-            y_true.extend(targets.cpu().numpy().tolist())
+            y_true.extend(target_prob.cpu().numpy().tolist())
             y_pred.extend(outputs_prob.argmax(1).cpu().numpy().tolist())
 
             _cls = outputs_prob.argmax(1).cpu().numpy().tolist()[0]
 
-            prec1 = self.calculate_accuracy(outputs_prob, targets, topk=(1,))
-            precision = calculate_precision(outputs_prob, targets)
-            recall = calculate_recall(outputs_prob, targets)
+            prec1 = self.calculate_accuracy(outputs_prob, target_prob, topk=(1,))
+            precision = calculate_precision(outputs_prob, target_prob)
+            recall = calculate_recall(outputs_prob, target_prob)
 
             top1.update(prec1[0], inputs.size(0))
             precisions.update(precision, inputs.size(0))
             recalls.update(recall, inputs.size(0))
-
-            test_data.jump_to_next(y_pred[-1])
 
             batch_time.update(time.time() - end_time)
             end_time = time.time()

@@ -167,7 +167,7 @@ def make_dataset(root_path, annotation_path, subset, n_samples_for_each_video,
 
 
 
-class EMS_cumulative(data.Dataset):
+class EMS_shift_test(data.Dataset):
     """
     Args:
         root (string): Root directory path.
@@ -188,7 +188,7 @@ class EMS_cumulative(data.Dataset):
                  root_path,
                  annotation_path,
                  subset,
-                 uneven_gestures_path,  # path to uneven frames
+                 uneven_gestures_paths,  # path to uneven frames
                  length_configuration,
                  n_samples_for_each_video=1,
                  spatial_transform=None,
@@ -196,7 +196,8 @@ class EMS_cumulative(data.Dataset):
                  target_transform=None,
                  sample_duration=16,
                  modality='RGB',
-                 get_loader=get_default_video_loader):
+                 get_loader=get_default_video_loader,
+                 offset=0):
         self.data, self.class_names, self.class_to_idx = make_dataset(
             root_path, annotation_path, subset, n_samples_for_each_video,
             sample_duration)
@@ -210,54 +211,70 @@ class EMS_cumulative(data.Dataset):
 
         self.fps = 30
         self.delay = 4 / 30
+        self.frame_indices = []
+        self.annots = []
+        self.num_gestures = 0
+        self.num_datasets = 0
+        self.index_to_dataset = []
+        self.index_to_gesture_id = []
+        self.starting_frames = []
+        self.uneven_gestures_paths = uneven_gestures_paths
+        self.offset = offset
+
         self.length_configuration = dict(length_configuration)
-        self.data_path = os.path.join(uneven_gestures_path, 'rgb/quick_all')
-        self.init_index()
         self.init_length_conf()
-        self.load_annotaion(os.path.join(uneven_gestures_path, 'quick.txt'))
+        self.init_data_paths()
+        self.load_annotations()
     
     def find_class_id(self, ges):
         for name, i in self.class_to_idx.items():
             if name in ges:
                 return i
         return None
+    
+    def init_data_paths(self):
+        self.data_paths = [os.path.join(p, 'rgb/quick_all') for p in self.uneven_gestures_paths]
 
     def load_annotaion(self, p):
         with open(p, 'r') as f:
-            annot = f.readlines()
-            annot = [a for a in annot[0::2]]
+            annot_origin = f.readlines()
+            annot_origin = [a for a in annot_origin[0::2]]
         
-        annot = annot[10:]
-        
-        self.annot = []
-        self.frame_indices = frame_indices = []
-        for a in annot:
+        annot = []
+        frame_indices = []
+        starting_frame = []
+        for a in annot_origin:
             ges = a.split('start')[0]
             ges = '_'.join(ges.lower().strip().split(' '))
-            self.annot.append(self.find_class_id(ges))
+            annot.append(self.find_class_id(ges))
             t = a.split('start:')[-1].strip()
             t = float(t)
 
             start = int((t + self.delay) * self.fps)
             end = start + self.length_configuration[self.find_class_id(ges)]
+            starting_frame.append(len(frame_indices))
             for i in range(start, end):
                 frame_indices.append(i)
-        
-        self.frame_indices = self.frame_indices[:-5]
+
+        frame_indices = frame_indices[:-5]
+        self.frame_indices.append(frame_indices)
+        self.annots.append(annot)
+        self.num_gestures += len(annot)
+        self.index_to_dataset += [self.num_datasets for i in range(len(annot))]
+        self.index_to_gesture_id += [i for i in range(len(annot))]
+        self.starting_frames.append(starting_frame)
+        self.num_datasets += 1
+    
+    def load_annotations(self):
+        for p in self.uneven_gestures_paths:
+            self.load_annotaion(os.path.join(p, 'quick.txt'))
+        print('loaded %d gestures in total' % self.num_gestures)
 
     def init_length_conf(self):
         keys = list(self.length_configuration.keys())
         for k in keys:
             self.length_configuration[self.find_class_id(k)] = self.length_configuration[k]
-
-    def init_index(self):
-        self.index = 0
-
-    def jump_to_next(self, pred):
-        num_frames = self.length_configuration[pred]
-        self.index += num_frames
-        if self.index > len(self.frame_indices) - 10:
-            self.index = len(self.frame_indices) - 10
+        print(self.length_configuration)
 
     def __getitem__(self, index):
         """
@@ -267,15 +284,20 @@ class EMS_cumulative(data.Dataset):
             tuple: (image, target) where target is class_index of the target class.
         """
 
-        if index == 0:
-            print('ems_cumulative: reset internal index')
-            self.init_index()
+        dataset_id = self.index_to_dataset[index]
+        path = self.data_paths[dataset_id]
+        gesture_id = self.index_to_gesture_id[index]
+        starting_frame = self.starting_frames[dataset_id][gesture_id]
+        frame_indices = self.frame_indices[dataset_id]
 
-        path = self.data_path
+        offset = self.offset
+        start = max(0, starting_frame + offset)
+        start = min(start, len(frame_indices) - 2)
+        end = min(len(frame_indices) - 1, start + 10)
 
-        frame_indices = list(range(self.index, self.index + 10))
-        frame_indices = [self.frame_indices[i] for i in frame_indices]
-        # print(frame_indices)
+        frame_indices = [frame_indices[i] for i in range(start, end)]
+        # print('start', start, 'end', end, 'frame_indices', frame_indices, 'offset', random_offset, self.annots[dataset_id][gesture_id])
+
         if self.temporal_transform is not None:
             frame_indices = self.temporal_transform(frame_indices)
         clip = self.loader(path, frame_indices, self.modality, self.sample_duration)
@@ -288,11 +310,11 @@ class EMS_cumulative(data.Dataset):
         im_dim = clip[0].size()[-2:]
         clip = torch.cat(clip, 0).view((self.sample_duration, -1) + im_dim).permute(1, 0, 2, 3)
 
-        target = self.annot[index]
+        target = (self.annots[dataset_id][gesture_id], torch.tensor((offset,)).float())
         
         return clip, target
 
     def __len__(self):
-        return len(self.annot[:])
+        return self.num_gestures
 
 

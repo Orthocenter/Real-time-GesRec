@@ -225,6 +225,7 @@ class EMS_shift(data.Dataset):
         self.init_length_conf()
         self.init_data_paths()
         self.load_annotations()
+        self.random_offsets = [0] + [-i for i in range(1,self.random_offset+1)] + [i for i in range(1,self.random_offset+1)]
     
     def find_class_id(self, ges):
         for name, i in self.class_to_idx.items():
@@ -256,6 +257,7 @@ class EMS_shift(data.Dataset):
             for i in range(start, end):
                 frame_indices.append(i)
 
+        frame_indices = frame_indices[:-5]
         self.frame_indices.append(frame_indices)
         self.annots.append(annot)
         self.num_gestures += len(annot)
@@ -289,7 +291,7 @@ class EMS_shift(data.Dataset):
         starting_frame = self.starting_frames[dataset_id][gesture_id]
         frame_indices = self.frame_indices[dataset_id]
 
-        random_offset = random.randint(0, self.random_offset) * (random.randint(0, 1) * 2 - 1)
+        random_offset = self.random_offsets[random.randint(0, len(self.random_offsets) - 1)]
         start = max(0, starting_frame + random_offset)
         start = min(start, len(frame_indices) - 2)
         end = min(len(frame_indices) - 1, start + 10)

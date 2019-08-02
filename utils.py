@@ -32,7 +32,7 @@ class Logger(object):
             self.log_file = open(path, 'w')
         self.logger = csv.writer(self.log_file, delimiter='\t')
 
-        if continued:
+        if not continued:
             self.logger.writerow(header)
         
         self.header = header

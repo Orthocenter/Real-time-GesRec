@@ -226,8 +226,8 @@ class EMS_shift(data.Dataset):
         self.init_data_paths()
         self.load_annotations()
         # self.random_offsets = [0] + [-i for i in range(1,self.random_offset+1)] + [i for i in range(1,self.random_offset+1)]
-        ## temporarily set to [1] for 15.34.10
-        self.random_offsets = [-2]
+        ## temporarily set to [1] for 15.34.11
+        self.random_offsets = [1]
     
     def find_class_id(self, ges):
         for name, i in self.class_to_idx.items():
@@ -242,6 +242,8 @@ class EMS_shift(data.Dataset):
         with open(p, 'r') as f:
             annot_origin = f.readlines()
             annot_origin = [a for a in annot_origin[0::2]]
+        
+        annot_origin = annot_origin[10:-10]
         
         annot = []
         frame_indices = []
@@ -259,7 +261,6 @@ class EMS_shift(data.Dataset):
             for i in range(start, end):
                 frame_indices.append(i)
 
-        frame_indices = frame_indices[:-5]
         self.frame_indices.append(frame_indices)
         self.annots.append(annot)
         self.num_gestures += len(annot)
@@ -279,6 +280,11 @@ class EMS_shift(data.Dataset):
             self.length_configuration[self.find_class_id(k)] = self.length_configuration[k]
         print(self.length_configuration)
 
+    def get_frame_indices(self, dataset_id, gesture_id):
+        start = self.starting_frames[dataset_id][gesture_id]
+        end = start + self.length_configuration[self.annots[dataset_id][gesture_id]]
+        return [self.frame_indices[dataset_id][i] for i in range(start, end)]
+
     def __getitem__(self, index):
         """
         Args:
@@ -290,10 +296,16 @@ class EMS_shift(data.Dataset):
         dataset_id = self.index_to_dataset[index]
         path = self.data_paths[dataset_id]
         gesture_id = self.index_to_gesture_id[index]
-        starting_frame = self.starting_frames[dataset_id][gesture_id]
-        frame_indices = self.frame_indices[dataset_id]
 
         random_offset = self.random_offsets[random.randint(0, len(self.random_offsets) - 1)]
+
+        ## randomly prepend and append gestures
+        gesture_id2 = random.randint(0, len(self.annots[dataset_id]) - 1)
+        gesture_id3 = random.randint(0, len(self.annots[dataset_id]) - 1)
+        frame_indices = self.get_frame_indices(dataset_id, gesture_id2)
+        starting_frame = len(frame_indices)
+        frame_indices += self.get_frame_indices(dataset_id, gesture_id) + self.get_frame_indices(dataset_id, gesture_id3)
+
         start = max(0, starting_frame + random_offset)
         start = min(start, len(frame_indices) - 2)
         end = min(len(frame_indices) - 1, start + 10)
